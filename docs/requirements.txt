@@ -1,4 +1,4 @@
-requests>=2.25.0
+requests>=2.32.4
 SQLAlchemy>=1.4.24
 ecdsa>=0.17
 sphinx>=3.5.2
