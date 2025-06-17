@@ -1,4 +1,4 @@
-requests>=2.32.2
+requests>=2.32.4
 fastecdsa>=2.3.0
 scrypt>=0.8.20
 pycryptodome>=3.19.0
