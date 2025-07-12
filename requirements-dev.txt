@@ -11,3 +11,4 @@ mysql-connector-python>=9.3.0
 mysqlclient>=2.1.0
 parameterized>=0.8.1
 sphinx_rtd_theme>=1.0.0
+urllib3>=2.5.0 # not directly required, pinned by Snyk to avoid a vulnerability
