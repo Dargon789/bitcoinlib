@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 #    BitcoinLib - Python Cryptocurrency Library
-#    Blockbook Client api/v2 - available on various servers or run on your own see https://github.com/trezor/blockbook
+#    Blockbook Client api/v1 - available on various servers or run on your own see https://github.com/trezor/blockbook
 #    1200 Web Development <http://1200wd.com/>
 #    © 2023 - 2025 May
 #
@@ -25,7 +25,7 @@ from bitcoinlib.main import MAX_TRANSACTIONS
 from bitcoinlib.services.baseclient import BaseClient
 from bitcoinlib.transactions import Transaction
 
-PROVIDERNAME = 'blockbook'
+PROVIDERNAME = 'blockbook1'
 REQUEST_LIMIT = 50
 
 _logger = logging.getLogger(__name__)
@@ -49,18 +49,18 @@ class BlockbookClient(BaseClient):
             status = 'confirmed'
         else:
             status = 'unconfirmed'
-        txdate = datetime.fromtimestamp(tx['blockTime'], timezone.utc)
+        txdate = datetime.fromtimestamp(tx['blocktime'], timezone.utc)
         t = Transaction.parse_hex(tx['hex'], strict=self.strict, network=self.network)
-        t.input_total = int(tx['valueIn'])
-        t.output_total = int(tx['value'])
-        t.fee = int(tx['fees'])
+        t.input_total = round(float(tx['valueIn']) / self.network.denominator)
+        t.output_total = round(float(tx['valueOut']) / self.network.denominator)
+        t.fee = round(float(tx['fees']) / self.network.denominator)
         t.date = txdate if tx['confirmations'] else None
         t.confirmations = tx['confirmations']
-        t.block_height = None if tx['blockHeight'] == -1 else tx['blockHeight']
-        t.block_hash = tx.get('blockHash', '')
+        t.block_height = None if tx['blockheight'] == -1 else tx['blockheight']
+        t.block_hash = tx.get('blockhash', None)
         t.status = status
         for n, ti in enumerate(tx['vin']):
-            t.inputs[n].value = int(ti.get('value', 0))
+            t.inputs[n].value = round(float(ti.get('value', 0) or 0) / self.network.denominator)
         for i, to in enumerate(tx['vout']):
             t.outputs[i].spent = to.get('spent', False)
         return t
@@ -70,7 +70,7 @@ class BlockbookClient(BaseClient):
         addresslist = self._addresslist_convert(addresslist)
         for a in addresslist:
             res = self.compose_request('address', a.address)
-            balance += int(res['balance'])
+            balance += round(float(res['balance']) / self.network.denominator)
         return balance
 
     def getutxos(self, address, after_txid='', limit=MAX_TRANSACTIONS):
@@ -89,7 +89,7 @@ class BlockbookClient(BaseClient):
                 'block_height': tx.get('height', 0),
                 'fee': None,
                 'size': 0,
-                'value': int(tx['value']),
+                'value': int(tx['satoshis']),
                 'script': tx.get('scriptPubKey', ''),
                 'date': None
             })
@@ -102,10 +102,10 @@ class BlockbookClient(BaseClient):
     def gettransactions(self, address, after_txid='', limit=MAX_TRANSACTIONS):
         address = self._address_convert(address)
         res = self.compose_request('address', address.address, variables={'details': 'txs'})
-        if 'transactions' not in res:
+        if 'txs' not in res:
             return []
         txs = []
-        txs_dict = res['transactions'][::-1]
+        txs_dict = res['txs'][::-1]
         if after_txid:
             txs_dict = txs_dict[[t['txid'] for t in txs_dict].index(after_txid) + 1:]
         for tx in txs_dict[:limit]:
@@ -162,7 +162,7 @@ class BlockbookClient(BaseClient):
             'txs': txs,
             'version': bd['version'],
             'page': page,
-            'pages': None if not limit else round(len(bd['txs']) // limit) + (len(bd['txs']) % limit > 0),
+            'pages': None if not limit else int(len(bd['txs']) // limit) + (len(bd['txs']) % limit > 0),
             'limit': limit
         }
         return block
